@@ -1,43 +1,16 @@
-name: Build and Deploy to Azure Container Instance
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Login to Azure Container Registry
-        run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_NAME }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
-
-      - name: Build Docker Image
-        run: docker build -t ${{ secrets.ACR_NAME }}/node_cicd_image:latest .
-
-      - name: Push Docker Image to ACR
-        run: docker push ${{ secrets.ACR_NAME }}/node_cicd_image:latest
-
-      - name: Deploy to Azure Container Instance
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            az container create \
-              --resource-group ${{ secrets.AZURE_RG }} \
-              --name ${{ secrets.CONTAINER_NAME }} \
-              --image ${{ secrets.ACR_NAME }}/node_cicd_image:latest \
-              --registry-login-server ${{ secrets.ACR_NAME }} \
-              --registry-username ${{ secrets.ACR_USERNAME }} \
-              --registry-password ${{ secrets.ACR_PASSWORD }} \
-              --dns-name-label ${{ secrets.CONTAINER_NAME }} \
-              --ports 3000 \
-              --location ${{ secrets.AZURE_LOCATION }} \
-              --restart-policy OnFailure
+- name: Deploy to Azure Container Instance
+  uses: azure/cli@v1
+  with:
+    inlineScript: |
+      az container create \
+        --resource-group ${{ secrets.AZURE_RG }} \
+        --name ${{ secrets.CONTAINER_NAME }} \
+        --image ${{ secrets.ACR_NAME }}/node_cicd_image:latest \
+        --registry-login-server ${{ secrets.ACR_NAME }} \
+        --registry-username ${{ secrets.ACR_USERNAME }} \
+        --registry-password ${{ secrets.ACR_PASSWORD }} \
+        --dns-name-label ${{ secrets.CONTAINER_NAME }} \
+        --ports 3000 \
+        --os-type Linux \
+        --location ${{ secrets.AZURE_LOCATION }} \
+        --restart-policy OnFailure
