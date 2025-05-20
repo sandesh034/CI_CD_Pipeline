@@ -21,10 +21,19 @@ jobs:
         run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_NAME }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
       - name: Build Docker image
-        run: docker build -t ${{ secrets.ACR_NAME }}/node_cicd_image:latest .
+        run: docker build --no-cache -t ${{ secrets.ACR_NAME }}/node_cicd_image:latest .
 
       - name: Push Docker image to ACR
         run: docker push ${{ secrets.ACR_NAME }}/node_cicd_image:latest
+
+      - name: Delete existing container (if any)
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            az container delete \
+              --resource-group ${{ secrets.AZURE_RG }} \
+              --name ${{ secrets.CONTAINER_NAME }} \
+              --yes || true
 
       - name: Deploy to Azure Container Instance
         uses: azure/cli@v1
@@ -43,4 +52,14 @@ jobs:
               --cpu 1 \
               --memory 1.5 \
               --location ${{ secrets.AZURE_LOCATION }} \
-              --restart-policy OnFailure
+              --restart-policy OnFailure \
+              --pull-policy Always \
+              --output none
+
+      - name: Show container logs
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            az container logs \
+              --resource-group ${{ secrets.AZURE_RG }} \
+              --name ${{ secrets.CONTAINER_NAME }}
